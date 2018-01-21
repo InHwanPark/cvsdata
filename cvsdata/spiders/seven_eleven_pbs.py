@@ -2,6 +2,7 @@
 from scrapy import Spider, Request
 
 
+
 class SevenElevenPbsSpider(Spider):
     name = 'seven_eleven_pbs'
     allowed_domains = ['7-eleven.co.kr']
@@ -9,7 +10,7 @@ class SevenElevenPbsSpider(Spider):
 
     # global variables
     product_cnt = 0
-    prev_product_cnt = 0;
+    prev_product_cnt = 0
 
     def parse(self, response):
         

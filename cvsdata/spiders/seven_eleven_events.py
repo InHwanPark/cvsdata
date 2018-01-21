@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import string
 from scrapy import Spider, Request
 from cvsdata.items import CvsdataItem
 
@@ -8,13 +9,15 @@ class SevenElevenEventsSpider(Spider):
     name = 'seven_eleven_events'
     allowed_domains = ['7-eleven.co.kr']
     start_urls = [
-        # 'http://www.7-eleven.co.kr/product/listMoreAjax.asp',
+        'http://www.7-eleven.co.kr/product/listMoreAjax.asp',
         'http://www.7-eleven.co.kr/product/bestdosirakList.asp?intPageSize=200&pTab=5'
     ]
 
     # global variables
+    detail_page_url = 'http://www.7-eleven.co.kr/product/presentView.asp?pCd={}'
+    detail_freebie_page_url = 'http://www.7-eleven.co.kr/product/presentView_pre.asp?pCd={}'
     product_cnt = 0
-    prev_product_cnt = 0;
+    prev_product_cnt = 0
 
     def parse(self, response):
         
@@ -51,21 +54,52 @@ class SevenElevenEventsSpider(Spider):
                 event_type = '증정'
 
             img_url = response.urljoin(product.xpath('.//*[@class="pic_product"]/img/@src').extract_first())
-            name = product.xpath('.//*[@class="infowrap"]/div[@class="name"]/text()').extract_first()
+            goods_name = product.xpath('.//*[@class="infowrap"]/div[@class="name"]/text()').extract_first()
             price = product.xpath('.//*[@class="infowrap"]/div[@class="price"]/span/text()').extract_first()
 
             freebie_img_url = ''
             freebie_name = ''
             freebie_price = ''
+            freebie_p_cd = ''
+
+            p_cd = product.xpath('.//a[@class="btn_product_01"]/@href').extract_first()
+            p_cd = p_cd[p_cd.find("('") + 2: p_cd.find("')") ]
 
             if event_type == '증정':
                 freebie_img_url = product.xpath('./a[@class="btn_product_02"]//img/@src').extract_first()
                 freebie_name = product.xpath('./a[@class="btn_product_02"]//div[@class="name"]/text()').extract_first()
                 freebie_price = product.xpath('./a[@class="btn_product_02"]//div[@class="price"]/span/text()').extract_first()
 
+                freebie_p_cd = product.xpath('.//a[@class="btn_product_02"]/@href').extract_first()
+
+                if freebie_p_cd is not None and len(freebie_p_cd) > 0:
+                    freebie_p_cd = freebie_p_cd[freebie_p_cd.find("('") + 2: freebie_p_cd.find("')") ]
+                    print('found freebie_p_cd : {}'.format(freebie_p_cd))
+
             self.product_cnt += 1
 
-            yield {'event_type':event_type, 'img_url':img_url, 'name':name, 'price':price, 'new': 'N', 'popular': 'N', 'freebie_img_url':freebie_img_url, 'freebie_name':freebie_name, 'freebie_price':freebie_price}
+            item = CvsdataItem()
+            item['site_name'] = 'seven eleven'
+            item['target_page'] = p_cd
+            item['category'] = event_type
+            item['event_type'] = event_type
+            item['img_url'] = img_url
+            item['goods_name'] = goods_name
+            item['price'] = price
+            # item['new_yn'] = new
+            # item['popular_yn'] = popular
+            item['freebie_img_url'] = freebie_img_url
+            item['freebie_name'] = freebie_name
+            item['freebie_price'] = freebie_price
+            # item['freebie_new_yn'] = 'N'
+            # item['freebie_popular_yn'] = 'N'
+
+            # yield {'event_type':event_type, 'img_url':img_url, 'name':goods_name, 'price':price, 'new': 'N', 'popular': 'N', 'freebie_img_url':freebie_img_url, 'freebie_name':freebie_name, 'freebie_price':freebie_price}
+            # yield item
+            yield Request(url=self.detail_page_url.format(p_cd),
+                         meta={'item':item, 'p_cd':p_cd, 'freebie_p_cd': freebie_p_cd},
+                         callback=self.parse_detail,
+                         dont_filter=True)
                     
     # dosirak list parse
     def parse_dosirak(self, response):
@@ -94,10 +128,7 @@ class SevenElevenEventsSpider(Spider):
             freebie_name = ''
             freebie_price = ''
 
-            
-
             # 아이템 반환 - return item
-
             if goods_name is not None:
                 item = CvsdataItem()
                 item['site_name'] = 'seven eleven'
@@ -127,4 +158,84 @@ class SevenElevenEventsSpider(Spider):
         # 'freebie_detail_page_url'이 있는지 확인하고 있을 경우 item과 함께 다시한번 이동하도록 meta = {'item':item} 다시 실행
         # 'freebie_detail_page_url'이 없을 경우 증정품이 없으므로 끝내고 바로 yield 혹은 return
         # 수집 된 주소를 통해 self.parse_detail로 이동
-        pass
+        # http://www.7-eleven.co.kr/product/presentView.asp?pCd=061298
+
+        item = response.meta.get('item')
+        p_cd = response.meta.get('p_cd')
+        freebie_p_cd = response.meta.get('freebie_p_cd')
+
+        new_yn = response.xpath('//li[@class="ico_tag_03"]').extract_first()
+        popular_yn = response.xpath('//li[@class="ico_tag_01"]').extract_first()
+
+        price = response.xpath('//span[@class="product_price"]/del/text()').extract_first()
+
+        if price is not None and len(price) > 0:
+            price = price[:-2]
+
+        discount_price = response.xpath('//span[@class="product_price"]/strong/text()').extract_first()
+
+        if price is None:
+            price = discount_price
+            discount_price = None
+
+        if new_yn == 'New':
+            new_yn = 'Y'
+        else:
+            new_yn = 'N'
+
+        if popular_yn == '인기':
+            popular_yn = 'Y'
+        else:
+            popular_yn = 'N'
+
+        item['price'] = price
+        item['discount_price'] = discount_price
+        item['new_yn'] = new_yn
+        item['popular_yn'] = popular_yn
+        item['distributer'] = response.xpath('//span[@class="tit_3depth"]/text()').extract_first()
+        description = response.xpath('//dd[@class="productView_content_dd_01"]/span[@class="txt"]/text()').extract_first().strip()
+        description = description.replace('\t','').replace('\r','').replace('\n','')
+        item['description'] = description
+        item['weight'] = response.xpath('//ul[@class="productView_content_ul"]/li/span/text()').extract_first()
+
+        # 증정품의 상품이 있을 경우 2차 수집 진행
+        if freebie_p_cd is not None and freebie_p_cd is not '':
+            print('FREEBIE ITEM CONFIRMED : {}'.format(freebie_p_cd))
+            yield Request(url=self.detail_freebie_page_url.format(freebie_p_cd),
+                         meta={'item':item, 'p_cd':p_cd, 'freebie_p_cd': freebie_p_cd},
+                         callback=self.parse_freebie_detail, dont_filter=True)
+        else:
+            # freebie_p_cd 가 없을 경우 기존 그대로 return
+            yield item
+
+    def parse_freebie_detail(self, response):
+        # 여기서 증정품 화면 확인
+        item = response.meta.get('item')
+
+        freebie_new_yn = response.xpath('//li[@class="ico_tag_03"]').extract_first()
+        freebie_popular_yn = response.xpath('//li[@class="ico_tag_01"]').extract_first()
+
+        if freebie_new_yn == 'New':
+            freebie_new_yn = 'Y'
+        else:
+            freebie_new_yn = 'N'
+
+        if freebie_popular_yn == '인기':
+            freebie_popular_yn = 'Y'
+        else:
+            freebie_popular_yn = 'N'
+        
+        freebie_price = response.xpath('//span[@class="product_price"]/strong/text()').extract_first()
+        freebie_distributer = response.xpath('//span[@class="tit_3depth"]/text()').extract_first()
+        freebie_weight = response.xpath('//ul[@class="productView_content_ul"]/li/span/text()').extract_first()
+        freebie_description = response.xpath('//dd[@class="productView_content_dd_01"]/span[@class="txt"]/text()').extract_first().strip()
+        freebie_description = freebie_description.replace('\t','').replace('\r','').replace('\n','')
+        
+        item['freebie_new_yn'] = freebie_new_yn
+        item['freebie_popular_yn'] = freebie_popular_yn
+        item['freebie_price'] = freebie_price
+        item['freebie_distributer'] = freebie_distributer
+        item['freebie_weight'] = freebie_weight
+        item['freebie_description'] = freebie_description
+
+        yield item
