@@ -91,6 +91,7 @@ class Gs25PbsSpider(Spider):
             item['target_page'] = 'PB'
             item['category'] = event_type
             item['event_type'] = event_type
+            item['detail_page_url'] = response.url
             item['img_url'] = img_url
             item['goods_name'] = goods_name
             item['price'] = price

@@ -76,6 +76,7 @@ class Gs25EventsSpider(Spider):
             item['target_page'] = '행사상품'
             item['category'] = event_type
             item['event_type'] = event_type
+            item['detail_page_url'] = response.url
             item['img_url'] = pic_url
             item['goods_name'] = goods_name
             item['price'] = price

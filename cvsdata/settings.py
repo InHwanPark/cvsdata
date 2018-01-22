@@ -22,7 +22,8 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 ROBOTSTXT_OBEY = False
 
 # FEED_EXPORT_FIELDS
-FEED_EXPORT_FIELDS = ['site_name', 'target_page', 'category', 'event_type', 'goods_name', 'price', 'discount_price', 'new_yn', 'popular_yn', 'distributer', 'weight', 'description', 'img_url', 'freebie_name', 'freebie_price', 'freebie_new_yn', 'freebie_popular_yn', 'freebie_distributer', 'freebie_weight', 'freebie_description', 'freebie_img_url']
+FEED_EXPORT_FIELDS = ['site_name', 'target_page', 'category', 'event_type', 'goods_name', 'price', 'discount_price', 'new_yn', 'popular_yn', 'distributer', 'weight', 'description', 'detail_page_url', 'img_url', 'freebie_name', 'freebie_price', 'freebie_new_yn', 'freebie_popular_yn', 'freebie_distributer', 'freebie_weight', 'freebie_description', 'freebie_detail_page_url', 'freebie_img_url']
+# FEED_EXPORT_FIELDS = ['site_name', 'event_type', 'event_name', 'period_start', 'period_end', 'announcement_date', 'event_link', 'img_url']
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32

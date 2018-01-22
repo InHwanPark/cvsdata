@@ -40,7 +40,7 @@ class SevenElevenEventsSpider(Spider):
                     else:
                         # 상품이 추가로 수집된 경우 현재 상품수를 보존하고 다음 페이지로 넘어간다.
                         self.prev_product_cnt = self.product_cnt
-                        yield Request(url=response.urljoin('?intPageSize={}&intCurrPage={}&pTab={}'.format(10, pageNo, tab_idx)), callback=self.parse_product)
+                        yield Request(url=response.urljoin('?intPageSize={}&intCurrPage={}&pTab={}'.format(10, pageNo, tab_idx)), meta={'tab_idx': tab_idx}, callback=self.parse_product)
 
 
     def parse_product(self, response):
@@ -51,10 +51,17 @@ class SevenElevenEventsSpider(Spider):
             event_type = product.xpath('./ul[@class="tag_list_01"]/li/text()').extract_first()
 
             if event_type is None:
-                event_type = '증정'
+                if response.meta.get('tab_idx') == 8:
+                    event_type = '신상품'
+                else:
+                    event_type = '증정'
 
             img_url = response.urljoin(product.xpath('.//*[@class="pic_product"]/img/@src').extract_first())
             goods_name = product.xpath('.//*[@class="infowrap"]/div[@class="name"]/text()').extract_first()
+
+            if goods_name == '' or goods_name is None:
+                goods_name = product.xpath('.//span[@class="tit_product"]/text()').extract_first()
+
             price = product.xpath('.//*[@class="infowrap"]/div[@class="price"]/span/text()').extract_first()
 
             freebie_img_url = ''
@@ -80,7 +87,7 @@ class SevenElevenEventsSpider(Spider):
 
             item = CvsdataItem()
             item['site_name'] = 'seven eleven'
-            item['target_page'] = p_cd
+            item['target_page'] = 'PB' if event_type == 'PB' else '행사상품'
             item['category'] = event_type
             item['event_type'] = event_type
             item['img_url'] = img_url
@@ -143,8 +150,8 @@ class SevenElevenEventsSpider(Spider):
                 item['freebie_img_url'] = freebie_img_url
                 item['freebie_name'] = freebie_name
                 item['freebie_price'] = freebie_price
-                item['freebie_new_yn'] = 'N'
-                item['freebie_popular_yn'] = 'N'
+                # item['freebie_new_yn'] = 'N'
+                # item['freebie_popular_yn'] = 'N'
 
                 # yield 대신 아이템 반환으로 변경 - 여기서 Request Call을 통해 Detail Page로 들어가야 함 - detail page 주소, freebie detail page 주소 있는지 검사 필요
                 # 수집 된 주소를 통해 self.parse_detail로 이동
@@ -197,6 +204,7 @@ class SevenElevenEventsSpider(Spider):
         description = description.replace('\t','').replace('\r','').replace('\n','')
         item['description'] = description
         item['weight'] = response.xpath('//ul[@class="productView_content_ul"]/li/span/text()').extract_first()
+        item['detail_page_url'] = 'http://www.7-eleven.co.kr/product/presentView.asp?pCd=' + p_cd
 
         # 증정품의 상품이 있을 경우 2차 수집 진행
         if freebie_p_cd is not None and freebie_p_cd is not '':
@@ -237,5 +245,6 @@ class SevenElevenEventsSpider(Spider):
         item['freebie_distributer'] = freebie_distributer
         item['freebie_weight'] = freebie_weight
         item['freebie_description'] = freebie_description
+        item['detail_page_url'] = 'http://www.7-eleven.co.kr/product/presentView_pre.asp?pCd=' + response.meta.get('freebie_p_cd')
 
         yield item

@@ -23,6 +23,7 @@ class CvsdataItem(Item):
     distributer = Field()
     weight = Field()
     description = Field()
+    detail_page_url = Field()
     img_url = Field()
     freebie_name = Field()
     freebie_price = Field()
@@ -31,4 +32,5 @@ class CvsdataItem(Item):
     freebie_distributer = Field()
     freebie_weight = Field()
     freebie_description = Field()
+    freebie_detail_page_url = Field()
     freebie_img_url = Field()
