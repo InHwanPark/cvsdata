@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import string
 from scrapy import Spider, Request
 from cvsdata.items import CvsdataItem
 
